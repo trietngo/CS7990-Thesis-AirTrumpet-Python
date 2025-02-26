@@ -9,8 +9,6 @@ from mediapipe.python.solutions.drawing_utils import DrawingSpec
 mp_hands = hands
 hand = mp_hands.Hands()
 
-# Facial Recognition
-
 # Initializing the drawing utils for drawing the facial landmarks on image
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = drawing_styles
