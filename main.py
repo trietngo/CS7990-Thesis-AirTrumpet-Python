@@ -149,13 +149,12 @@ while True:
                 # mp_hands.HAND_CONNECTIONS
             )
 
-
     # Convert the RGB image back to BGR
     image = cv.cvtColor(image_rgb, cv.COLOR_RGB2BGR)
     
     # Display the resulting frame
     cv.imshow('Hand Landmarks', image)
-    if cv.waitKey(1) == ord('q') or cv.waitKey(1) == ord('Q'):
+    if cv.waitKey(1) == ord('q'):
         break
  
 # When everything done, release the capture
