@@ -78,12 +78,12 @@ while True:
             # print("tip_y: " + str(hand_landmarks.landmark[8].y));
 
             if index_tip_y >= index_pip_y:
-                print("Index finger curled")
+                print("Back valve pressed")
 
                 # Draw Text
                 cv.putText(
                     image_rgb, # image on which to draw text
-                    'Index finger curled', 
+                    'Back valve pressed', 
                     (200, 400), # bottom left corner of text
                     cv.FONT_HERSHEY_SIMPLEX, # font to use
                     0.5, # font scale
@@ -99,12 +99,12 @@ while True:
             # print("tip_y: " + str(hand_landmarks.landmark[8].y));
 
             if middle_tip_y >= middle_pip_y:
-                print("Middle finger curled")
+                print("Middle valve pressed")
 
                 # Draw Text
                 cv.putText(
                     image_rgb, # image on which to draw text
-                    'Middle finger curled', 
+                    'Middle valve pressed', 
                     (200, 500), # bottom left corner of text
                     cv.FONT_HERSHEY_SIMPLEX, # font to use
                     0.5, # font scale
@@ -120,12 +120,12 @@ while True:
             # print("tip_y: " + str(hand_landmarks.landmark[8].y));
 
             if ring_tip_y >= ring_pip_y:
-                print("Ring finger curled")
+                print("Front valve pressed")
 
                 # Draw Text
                 cv.putText(
                     image_rgb, # image on which to draw text
-                    'Ring finger curled', 
+                    'Front valve pressed', 
                     (200, 600), # bottom left corner of text
                     cv.FONT_HERSHEY_SIMPLEX, # font to use
                     0.5, # font scale
