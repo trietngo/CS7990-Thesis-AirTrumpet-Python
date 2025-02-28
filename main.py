@@ -43,6 +43,87 @@ if not cap.isOpened():
     print("Cannot open camera")
     exit()
 
+def notesClassification(index_pip_y, index_tip_y, middle_pip_y, middle_tip_y, ring_pip_y, ring_tip_y):
+
+    # Function to check if the front valve is pressed
+    # if the y-coord of the index tip is lower than the y-coord of the index pip
+    # then register a press and return True
+    def isBackValvePressed():
+
+        # Use greater than because the coords are inverted
+        if index_tip_y >= index_pip_y:
+            return True
+        
+        else:
+            return False
+
+    # Function to check if the middle valve is pressed
+    # if the y-coord of the middle finger tip is lower than the y-coord of the middle finger pip
+    # then register a press and return True
+    def isMiddleValvePressed():
+
+        # Use greater than because the coords are inverted
+        if middle_tip_y >= middle_pip_y:
+            return True
+        
+        else:
+            return False
+
+    # Function to check if the back valve is pressed
+    # if the y-coord of the ring finger tip is lower than the y-coord of the ring finger pip
+    # then register a press and return True
+    def isFrontValvePressed():
+
+        # Use greater than because the coords are inverted
+        if ring_tip_y >= ring_pip_y:
+            return True
+        
+        else:
+            return False
+    
+    # PRESSED VALVE COMBINATIONS
+    
+    # backValvePressed = isBackValvePressed()
+    # middleValvePressed = isMiddleValvePressed()
+    # frontValvePressed = isFrontValvePressed()
+
+    # print("back: " + str(backValvePressed))
+    # print("middle: " + str(middleValvePressed))
+    # print("front: " + str(frontValvePressed))
+
+    # No valve pressed
+    if not isBackValvePressed() and not isMiddleValvePressed() and not isFrontValvePressed():
+        return "No valves pressed. Possible notes: Do"
+    
+    # Back valve pressed only
+    elif isBackValvePressed() and not isMiddleValvePressed() and not isFrontValvePressed():
+        return "Back valve pressed. "
+    
+    # Middle valve pressed only
+    elif not isBackValvePressed() and isMiddleValvePressed() and not isFrontValvePressed():
+        return "Middle valve pressed"
+    
+    # Front valve pressed only
+    elif not isBackValvePressed() and not isMiddleValvePressed() and isFrontValvePressed():
+        return "Front valved pressed"
+    
+    # Back and middle valves only
+    elif isBackValvePressed() and isMiddleValvePressed() and not isFrontValvePressed():
+        return "Back and middle valves pressed"
+
+    # Middle and front valves only
+    elif not isBackValvePressed() and isMiddleValvePressed() and isFrontValvePressed():
+        return "Middle and front valves pressed"
+
+    # Back and front valves only
+    elif isBackValvePressed() and not isMiddleValvePressed() and isFrontValvePressed():
+        return "Back and front valves pressed"
+
+    # All three valves pressed
+    elif isBackValvePressed() and isMiddleValvePressed() and isFrontValvePressed():
+        return "All 3 valves pressed"
+
+
 while True:
     # Capture frame-by-frame
     ret, frame = cap.read()
@@ -66,78 +147,33 @@ while True:
 
         for hand_landmarks in results.multi_hand_landmarks:
 
-            # print(len(hand_landmarks.landmark)) # should return 21 for 21 hand-knuckle coordinates
+            output = notesClassification(
+                
+                # Index finger
+                index_pip_y=hand_landmarks.landmark[6].y,
+                index_tip_y=hand_landmarks.landmark[8].y,
 
-            # Curl Test
+                # Middle finger
+                middle_pip_y=hand_landmarks.landmark[10].y,
+                middle_tip_y=hand_landmarks.landmark[12].y,
 
-            # Index fingers
-            index_pip_y = hand_landmarks.landmark[6].y
-            index_tip_y = hand_landmarks.landmark[8].y
-
-            # print("pip_y: " + str(hand_landmarks.landmark[6].y));
-            # print("tip_y: " + str(hand_landmarks.landmark[8].y));
-
-            if index_tip_y >= index_pip_y:
-                print("Back valve pressed")
-
-                # Draw Text
-                cv.putText(
-                    image_rgb, # image on which to draw text
-                    'Back valve pressed', 
-                    (200, 400), # bottom left corner of text
-                    cv.FONT_HERSHEY_SIMPLEX, # font to use
-                    0.5, # font scale
-                    (255, 0, 0), # color
-                    1, # line thickness
-                )
-            
-            # Middle fingers
-            middle_pip_y = hand_landmarks.landmark[10].y
-            middle_tip_y = hand_landmarks.landmark[12].y
-
-            # print("pip_y: " + str(hand_landmarks.landmark[6].y));
-            # print("tip_y: " + str(hand_landmarks.landmark[8].y));
-
-            if middle_tip_y >= middle_pip_y:
-                print("Middle valve pressed")
-
-                # Draw Text
-                cv.putText(
-                    image_rgb, # image on which to draw text
-                    'Middle valve pressed', 
-                    (200, 500), # bottom left corner of text
-                    cv.FONT_HERSHEY_SIMPLEX, # font to use
-                    0.5, # font scale
-                    (255, 0, 0), # color
-                    1, # line thickness
-                )
-            
-            # Ring fingers
-            ring_pip_y = hand_landmarks.landmark[14].y
-            ring_tip_y = hand_landmarks.landmark[16].y
-
-            # print("pip_y: " + str(hand_landmarks.landmark[6].y));
-            # print("tip_y: " + str(hand_landmarks.landmark[8].y));
-
-            if ring_tip_y >= ring_pip_y:
-                print("Front valve pressed")
-
-                # Draw Text
-                cv.putText(
-                    image_rgb, # image on which to draw text
-                    'Front valve pressed', 
-                    (200, 600), # bottom left corner of text
-                    cv.FONT_HERSHEY_SIMPLEX, # font to use
-                    0.5, # font scale
-                    (255, 0, 0), # color
-                    1, # line thickness
-                )
+                # Ring finger
+                ring_pip_y=hand_landmarks.landmark[14].y,
+                ring_tip_y=hand_landmarks.landmark[16].y
+            )
             
             print()
 
-            # print("x: " + str(hand_landmarks.landmark[5].x));
-            # print("y: " + str(hand_landmarks.landmark[5].y));
-            # print("z: " + str(hand_landmarks.landmark[5].z));
+            # Draw Text
+            cv.putText(
+                image_rgb, # image on which to draw text
+                output, 
+                (200, 400), # bottom left corner of text
+                cv.FONT_HERSHEY_SIMPLEX, # font to use
+                0.5, # font scale
+                (255, 0, 0), # color
+                1, # line thickness
+            )
 
             mp_drawing.draw_landmarks(
                 image_rgb, 
