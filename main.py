@@ -125,7 +125,29 @@ if not cap.isOpened():
     print("Cannot open camera")
     exit()
 
-def notesClassification(
+def airflowClassification(
+
+    # Lip Landmarks
+    lip_center_outer_upper_y,
+    lip_center_outer_lower_y,
+    lip_center_inner_upper_y,
+    lip_center_inner_lower_y
+):
+
+    # Closed lips
+    if math.ceil(lip_center_inner_upper_y * 100) >= math.floor(lip_center_inner_lower_y * 100):
+
+        # Pursed lips, more air
+        if abs(lip_center_outer_upper_y - lip_center_outer_lower_y) <= 0.03:
+            return "Mouth pursed"
+        
+        else:
+            return "Mouth closed"
+
+    else:
+        return "Mouth open. No air"
+
+def valvesClassification(
         
     # Hand Landmarks
     index_pip_y,
@@ -134,9 +156,6 @@ def notesClassification(
     middle_tip_y,
     ring_pip_y,
     ring_tip_y,
-
-    # Lip Landmarks
-    # lip_center_outer_upper_y,
 
 ):
 
@@ -243,7 +262,7 @@ while True:
 
         for hand_landmarks in results_hands.multi_hand_landmarks:
 
-            output_hands = notesClassification(
+            output_hands = valvesClassification(
                 
                 # Index finger
                 index_pip_y=hand_landmarks.landmark[6].y,
@@ -281,33 +300,20 @@ while True:
 
         for face_landmark in results_face.multi_face_landmarks:
 
-            # print(face_landmark)
+            output_lips = airflowClassification(
 
-            lip_center_outer_upper_y = face_landmark.landmark[0].y
-            lip_center_outer_lower_y = face_landmark.landmark[17].y
+                # Outer boundary of lips
+                lip_center_outer_upper_y=face_landmark.landmark[0].y,
+                lip_center_outer_lower_y=face_landmark.landmark[17].y,
 
-            # print("lip_center_outer_upper_y: " + str(lip_center_outer_upper_y))
-            # print("lip_center_outer_lower_y: " + str(lip_center_outer_lower_y))
-
-            lip_center_inner_upper_y = face_landmark.landmark[13].y
-            lip_center_inner_lower_y = face_landmark.landmark[14].y
-
-            output_lips = ""
-
-            # Closed lips
-            if math.ceil(lip_center_inner_upper_y * 100) >= math.floor(lip_center_inner_lower_y * 100):
-                output_lips += "Mouth closed "
-
-                # Pursed lips, more air
-                if abs(lip_center_outer_upper_y - lip_center_outer_lower_y) <= 0.03:
-
-                    output_lips += "Mouth pursed "
-
-            print(output_lips)
+                # Inner boundary of lips
+                lip_center_inner_upper_y=face_landmark.landmark[13].y,
+                lip_center_inner_lower_y=face_landmark.landmark[14].y
+            )
 
             # Draw Text
             cv.putText(
-                image_rgb, # image on which to draw text
+                image_rgb, # image to draw text on
                 output_lips, 
                 (200, 425), # bottom left corner of text
                 cv.FONT_HERSHEY_SIMPLEX, # font to use
