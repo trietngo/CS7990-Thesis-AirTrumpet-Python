@@ -11,10 +11,10 @@ from mediapipe.python.solutions.hands import HandLandmark
 from mediapipe.python.solutions.drawing_utils import DrawingSpec
 
 # Playing sound using PyAudio
-chunk = 512
+chunk = 1024
 
 # Open wav file
-f = wave.open(r"data\sample_sounds\357382__mtg__trumpet-c4.wav", "rb")
+f = wave.open(r"data/sample_sounds/357382__mtg__trumpet-c4.wav", "rb")
 
 # Init PyAudio object
 p = pyaudio.PyAudio()
