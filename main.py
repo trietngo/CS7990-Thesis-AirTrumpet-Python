@@ -10,37 +10,37 @@ from mediapipe.python.solutions.face_mesh_connections import FACEMESH_LIPS
 from mediapipe.python.solutions.hands import HandLandmark
 from mediapipe.python.solutions.drawing_utils import DrawingSpec
 
-# Playing sound using PyAudio
-chunk = 1024
+# # Playing sound using PyAudio
+# chunk = 1024
 
-# Open wav file
-f = wave.open(r"data/sample_sounds/357382__mtg__trumpet-c4.wav", "rb")
+# # Open wav file
+# f = wave.open(r"data/sample_sounds/357382__mtg__trumpet-c4.wav", "rb")
 
-# Init PyAudio object
-p = pyaudio.PyAudio()
+# # Init PyAudio object
+# p = pyaudio.PyAudio()
 
-# Open stream
-stream = p.open(
-    format=p.get_format_from_width(f.getsampwidth()),
-    channels=f.getnchannels(),
-    rate=f.getframerate(),
-    output=True
-)
+# # Open stream
+# stream = p.open(
+#     format=p.get_format_from_width(f.getsampwidth()),
+#     channels=f.getnchannels(),
+#     rate=f.getframerate(),
+#     output=True
+# )
 
-# Read data
-data = f.readframes(chunk)
+# # Read data
+# data = f.readframes(chunk)
 
-# Play stream
-while data:
-    stream.write(data)
-    data = f.readframes(chunk)
+# # Play stream
+# while data:
+#     stream.write(data)
+#     data = f.readframes(chunk)
 
-# Stop stream
-stream.stop_stream()
-stream.close()
+# # Stop stream
+# stream.stop_stream()
+# stream.close()
 
-# Close pyAudio
-p.terminate()
+# # Close pyAudio
+# p.terminate()
 
 # FACIAL RECOGNITION
 mp_face = face_mesh
@@ -130,22 +130,46 @@ def airflowClassification(
     # Lip Landmarks
     lip_center_outer_upper_y,
     lip_center_outer_lower_y,
+
     lip_center_inner_upper_y,
-    lip_center_inner_lower_y
+    lip_center_inner_lower_y,
+
+    lip_left_x,
+    lip_right_x
 ):
+    
+    y_diff_outer_center_lip = abs(lip_center_outer_upper_y - lip_center_outer_lower_y)
+
+    y_diff_inner_center_lip = math.ceil(lip_center_inner_upper_y) >= math.floor(lip_center_inner_lower_y)
+
+    x_diff_edge_lip = abs(lip_left_x - lip_right_x)
+
+    # print("lip_center_outer_upper_y: ", lip_center_outer_upper_y)
+    # print("lip_center_outer_lower_y: ", lip_center_outer_lower_y)
+    # print()
+    print("diff: ", abs(lip_center_outer_upper_y - lip_center_outer_lower_y))
+
+    print("lip_left_x: ", lip_left_x)
+    print("lip_right_x: ", lip_right_x)
+
+    print("x_diff: ", x_diff_edge_lip)
 
     # Closed lips
-    if math.ceil(lip_center_inner_upper_y * 100) >= math.floor(lip_center_inner_lower_y * 100):
+    if y_diff_inner_center_lip:
 
         # Pursed lips, more air
-        if abs(lip_center_outer_upper_y - lip_center_outer_lower_y) <= 0.03:
-            return "Mouth pursed"
+        # 0.05 for mac
+        if y_diff_outer_center_lip <= 0.05:
+            return "Strained"
+        
+        elif x_diff_edge_lip <= 0.1:
+            return "Pursed"
         
         else:
-            return "Mouth closed"
+            return "Closed"
 
     else:
-        return "Mouth open. No air"
+        return "Open"
 
 def valvesClassification(
         
@@ -205,38 +229,82 @@ def valvesClassification(
     # print("middle: " + str(middleValvePressed))
     # print("front: " + str(frontValvePressed))
 
+    valve_state = "None"
+
+    if isBackValvePressed() or isMiddleValvePressed() or isFrontValvePressed():
+        valve_state = ""
+
     # No valve pressed
-    if not isBackValvePressed() and not isMiddleValvePressed() and not isFrontValvePressed():
-        return "No valves pressed. Possible notes: C"
+    if isBackValvePressed():
+        valve_state += "Back"
     
     # Back valve pressed only
-    elif isBackValvePressed() and not isMiddleValvePressed() and not isFrontValvePressed():
-        return "Back valve pressed. "
+    if isMiddleValvePressed():
+        valve_state += "Middle"
     
     # Middle valve pressed only
-    elif not isBackValvePressed() and isMiddleValvePressed() and not isFrontValvePressed():
-        return "Middle valve pressed"
+    if isFrontValvePressed():
+        valve_state += "Front"
     
-    # Front valve pressed only
-    elif not isBackValvePressed() and not isMiddleValvePressed() and isFrontValvePressed():
-        return "Front valve pressed"
+    return valve_state
+
+# Finger pos
+# "#" means sharp
+
+# Closed
+# Strained
+# Pursed
+# Strained and Pursed
+
+# C4: None + Closed
+# C#4: All + Closed
+# D4: BackFront + Closed
+# D#4: MiddleFront + Closed
+# E4: BackMiddle + Closed
+# F4: Back + Closed
+# F#4: Middle + Closed
+
+# G4: None + Pursed
+# G#4: MiddleFront + Pursed
+# A4: BackMiddle + Pursed
+# A#4: Back + Pursed
+# B4: Middle + Pursed
+
+# C5: None + Strained
+# C#5: All + Closed
+# D5: BackFront + Closed
+# D#5: MiddleFront + Closed
+# E5: BackMiddle + Closed
+# F5: Back + Closed
+# F#5: Middle + Closed
+
+# G5: None + Pursed
+# G#5: MiddleFront + Pursed
+# A5: BackMiddle + Pursed
+# A#5: Back + Pursed
+# B5: Middle + Pursed
+
+# C6: None + Strained
+
+
+def notesClassification(valve_state, lip_state):
     
-    # Back and middle valves only
-    elif isBackValvePressed() and isMiddleValvePressed() and not isFrontValvePressed():
-        return "Back and middle valves pressed"
-
-    # Middle and front valves only
-    elif not isBackValvePressed() and isMiddleValvePressed() and isFrontValvePressed():
-        return "Middle and front valves pressed"
-
-    # Back and front valves only
-    elif isBackValvePressed() and not isMiddleValvePressed() and isFrontValvePressed():
-        return "Back and front valves pressed"
-
-    # All three valves pressed
-    elif isBackValvePressed() and isMiddleValvePressed() and isFrontValvePressed():
-        return "All 3 valves pressed"
-
+    if lip_state == "Closed":
+        
+        if valve_state == "None":
+            return "C4 - Do"
+        
+        elif valve_state == "BackFront":
+            return "D4 - Re"
+        
+        elif valve_state == "BackMiddle":
+            return "E4 - Mi"
+    
+    elif lip_state == "Pursed":
+        if valve_state == "None":
+            return "C5"
+    
+    return "Nothing is playing"
 
 while True:
     # Capture frame-by-frame
@@ -258,11 +326,14 @@ while True:
     results_face = face.process(image_rgb)
     image_rgb.flags.writeable = True
 
+    valve_state = "Not Detected"
+    lip_state = "Not Detected"
+
     if results_hands.multi_hand_landmarks:
 
         for hand_landmarks in results_hands.multi_hand_landmarks:
 
-            output_hands = valvesClassification(
+            valve_state = valvesClassification(
                 
                 # Index finger
                 index_pip_y=hand_landmarks.landmark[6].y,
@@ -280,12 +351,12 @@ while True:
             # Draw Text
             cv.putText(
                 image_rgb, # image on which to draw text
-                output_hands, 
+                valve_state, 
                 (200, 400), # bottom left corner of text
                 cv.FONT_HERSHEY_SIMPLEX, # font to use
-                0.5, # font scale
+                1, # font scale
                 (255, 0, 0), # color
-                1, # line thickness
+                2, # line thickness
             )
 
             mp_drawing.draw_landmarks(
@@ -300,7 +371,7 @@ while True:
 
         for face_landmark in results_face.multi_face_landmarks:
 
-            output_lips = airflowClassification(
+            lip_state = airflowClassification(
 
                 # Outer boundary of lips
                 lip_center_outer_upper_y=face_landmark.landmark[0].y,
@@ -308,18 +379,22 @@ while True:
 
                 # Inner boundary of lips
                 lip_center_inner_upper_y=face_landmark.landmark[13].y,
-                lip_center_inner_lower_y=face_landmark.landmark[14].y
+                lip_center_inner_lower_y=face_landmark.landmark[14].y,
+
+                # Commmissures
+                lip_left_x=face_landmark.landmark[291].x,
+                lip_right_x=face_landmark.landmark[61].x
             )
 
             # Draw Text
             cv.putText(
                 image_rgb, # image to draw text on
-                output_lips, 
-                (200, 425), # bottom left corner of text
+                lip_state, 
+                (200, 450), # bottom left corner of text
                 cv.FONT_HERSHEY_SIMPLEX, # font to use
-                0.5, # font scale
+                1, # font scale
                 (255, 0, 0), # color
-                1, # line thickness
+                2, # line thickness
             )
 
             mp_drawing_lips.draw_landmarks(
@@ -330,6 +405,20 @@ while True:
                 # mp_face.FACEMESH_CONTOURS
             )
 
+    if results_hands.multi_hand_landmarks and results_face.multi_face_landmarks:
+
+        notes_output = notesClassification(valve_state, lip_state)
+
+        cv.putText(
+            image_rgb, # image to draw text on
+            "Current note: " + notes_output, 
+            (200, 500), # bottom left corner of text
+            cv.FONT_HERSHEY_SIMPLEX, # font to use
+            1, # font scale
+            (255, 0, 0), # color
+            2, # line thickness
+        )
+
     # Convert the RGB image back to BGR
     image = cv.cvtColor(image_rgb, cv.COLOR_RGB2BGR)
     
@@ -338,6 +427,6 @@ while True:
     if cv.waitKey(1) == ord('q'):
         break
  
-# When everything done, release the capture
+# When everything is done, release the capture
 cap.release()
 cv.destroyAllWindows()
