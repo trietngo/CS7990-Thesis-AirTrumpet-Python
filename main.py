@@ -140,8 +140,6 @@ def airflowClassification(
     
     y_diff_outer_center_lip = abs(lip_center_outer_upper_y - lip_center_outer_lower_y)
 
-    y_diff_inner_center_lip = math.ceil(lip_center_inner_upper_y) >= math.floor(lip_center_inner_lower_y)
-
     x_diff_edge_lip = abs(lip_left_x - lip_right_x)
 
     # print("lip_center_outer_upper_y: ", lip_center_outer_upper_y)
@@ -149,21 +147,30 @@ def airflowClassification(
     # print()
     print("diff: ", abs(lip_center_outer_upper_y - lip_center_outer_lower_y))
 
+    print()
+
     print("lip_left_x: ", lip_left_x)
     print("lip_right_x: ", lip_right_x)
 
     print("x_diff: ", x_diff_edge_lip)
+    print("y_diff_outer_center_lip: ", y_diff_outer_center_lip)
+
+    lip_is_closed = math.ceil(lip_center_inner_upper_y * 100) >= math.floor(lip_center_inner_lower_y * 100)
+
+    if not lip_is_closed:
+        if x_diff_edge_lip <= 0.08:
+            return "Pursed"
 
     # Closed lips
-    if y_diff_inner_center_lip:
+    if lip_is_closed:
 
         # Pursed lips, more air
         # 0.05 for mac
-        if y_diff_outer_center_lip <= 0.05:
-            return "Strained"
+        if x_diff_edge_lip <= 0.08:
+            return "Forced"
         
-        elif x_diff_edge_lip <= 0.1:
-            return "Pursed"
+        elif y_diff_outer_center_lip <= 0.05:
+            return "Strained"
         
         else:
             return "Closed"
@@ -254,7 +261,7 @@ def valvesClassification(
 # Closed
 # Strained
 # Pursed
-# Strained and Pursed
+# Forced
 
 # C4: None + Closed
 # C#4: All + Closed
@@ -264,28 +271,25 @@ def valvesClassification(
 # F4: Back + Closed
 # F#4: Middle + Closed
 
-# G4: None + Pursed
-# G#4: MiddleFront + Pursed
-# A4: BackMiddle + Pursed
-# A#4: Back + Pursed
-# B4: Middle + Pursed
+# G4: None + Strained
+# G#4: MiddleFront + Strained
+# A4: BackMiddle + Strained
+# A#4: Back + Strained
+# B4: Middle + Strained
 
-# C5: None + Strained
-# C#5: All + Closed
-# D5: BackFront + Closed
-# D#5: MiddleFront + Closed
-# E5: BackMiddle + Closed
-# F5: Back + Closed
-# F#5: Middle + Closed
+# C5: None + Pursed
+# C#5: BackMiddle + Pursed
+# D5: BackFront + Pursed
+# D#5: MiddleFront + Pursed
+# E5: Front + Pursed
+# F5: Back + Pursed
+# F#5: Middle + Pursed
 
-# G5: None + Pursed
-# G#5: MiddleFront + Pursed
-# A5: BackMiddle + Pursed
-# A#5: Back + Pursed
-# B5: Middle + Pursed
-
-# C6: None + Strained
-
+# G5: None + Forced
+# G#5: MiddleFront + Forced
+# A5: BackMiddle + Forced
+# A#5: Back + Forced
+# B5: Middle + Forced
 
 def notesClassification(valve_state, lip_state):
     
@@ -294,17 +298,83 @@ def notesClassification(valve_state, lip_state):
         if valve_state == "None":
             return "C4 - Do"
         
+        elif valve_state == "BackMiddleFront":
+            return "C#4 - Do#"
+        
         elif valve_state == "BackFront":
             return "D4 - Re"
         
+        elif valve_state == "MiddleFront":
+            return "D#4 - Re#"
+        
         elif valve_state == "BackMiddle":
             return "E4 - Mi"
+        
+        elif valve_state == "Back":
+            return "F4 - Fa"
+        
+        elif valve_state == "Middle":
+            return "F#4 - Fa#"
+    
+    elif lip_state == "Strained":
+
+        if valve_state == "None":
+            return "G4 - Son"
+    
+        elif valve_state == "MiddleFront":
+            return "G#4 - Son#"
+    
+        elif valve_state == "BackMiddle":
+            return "A4 - La"
+    
+        elif valve_state == "Back":
+            return "A#4 - La#"
+    
+        elif valve_state == "Middle":
+            return "B4 - Si"
     
     elif lip_state == "Pursed":
+
         if valve_state == "None":
-            return "C5"
+            return "C5 - Do"
+        
+        elif valve_state == "BackMiddle":
+            return "C#5 - Do#"
+        
+        elif valve_state == "BackFront":
+            return "D5 - Re"
+        
+        elif valve_state == "MiddleFront":
+            return "D#5 - Re#"
+        
+        elif valve_state == "Front":
+            return "E5 - Mi"
+        
+        elif valve_state == "Back":
+            return "F5 - Fa"
+        
+        elif valve_state == "Middle":
+            return "F#5 - Fa#"
+
+    elif lip_state == "Forced":
+
+        if valve_state == "None":
+            return "G5 - Son"
     
-    return "Nothing is playing"
+        elif valve_state == "MiddleFront":
+            return "G#5 - Son#"
+    
+        elif valve_state == "BackMiddle":
+            return "A5 - La"
+    
+        elif valve_state == "Back":
+            return "A#5 - La#"
+    
+        elif valve_state == "Middle":
+            return "B5 - Si"
+    
+    else:
+        return "Nothing is playing"
 
 while True:
     # Capture frame-by-frame
@@ -411,7 +481,7 @@ while True:
 
         cv.putText(
             image_rgb, # image to draw text on
-            "Current note: " + notes_output, 
+            notes_output, 
             (200, 500), # bottom left corner of text
             cv.FONT_HERSHEY_SIMPLEX, # font to use
             1, # font scale
