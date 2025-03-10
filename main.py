@@ -1,6 +1,9 @@
 import numpy as np
 import pyaudio
 import wave
+import enum
+from time import sleep
+from pygame import mixer
 import cv2 as cv
 import mediapipe as mp
 import math
@@ -10,37 +13,96 @@ from mediapipe.python.solutions.face_mesh_connections import FACEMESH_LIPS
 from mediapipe.python.solutions.hands import HandLandmark
 from mediapipe.python.solutions.drawing_utils import DrawingSpec
 
-# # Playing sound using PyAudio
-# chunk = 1024
+# Enumerate all possible Trumpet Notes
+# And the corresponding audio files in the data folder
+class TrumpetNoteSample(enum.StrEnum):
 
-# # Open wav file
-# f = wave.open(r"data/sample_sounds/357382__mtg__trumpet-c4.wav", "rb")
+    """Audio Files of 24 Possible Trumpet Notes"""
 
-# # Init PyAudio object
-# p = pyaudio.PyAudio()
+    C_4 = "data/sample_sounds_truncated/357382__mtg__trumpet-c4-truncated.wav"
+    C_SHARP_4 = "data/sample_sounds_truncated/357478__mtg__trumpet-csharp4-truncated.wav"
+    D_4 = "data/sample_sounds_truncated/357542__mtg__trumpet-d4-truncated.wav"
+    D_SHARP_4 = "data/sample_sounds_truncated/357388__mtg__trumpet-dsharp4-truncated.wav"
+    E_4 = "data/sample_sounds_truncated/357544__mtg__trumpet-e4-truncated.wav"
+    F_4 = "data/sample_sounds_truncated/357384__mtg__trumpet-f4-truncated.wav"
+    F_SHARP_4 = "data/sample_sounds_truncated/357323__mtg__trumpet-fsharp4-truncated.wav"
+    G_4 = "data/sample_sounds_truncated/357360__mtg__trumpet-g4-truncated.wav"
+    G_SHARP_4 = "data/sample_sounds_truncated/357363__mtg__trumpet-gsharp4-truncated.wav"
+    A_4 = "data/sample_sounds_truncated/357370__mtg__trumpet-a4-truncated.wav"
+    A_SHARP_4 = "data/sample_sounds_truncated/357457__mtg__trumpet-asharp4-truncated.wav"
+    B_4 = "data/sample_sounds_truncated/247067__mtg__overall-quality-of-single-note-trumpet-b4-truncated.wav"
 
-# # Open stream
-# stream = p.open(
-#     format=p.get_format_from_width(f.getsampwidth()),
-#     channels=f.getnchannels(),
-#     rate=f.getframerate(),
-#     output=True
-# )
+    C_5 = "data/sample_sounds_truncated/357432__mtg__trumpet-c5-truncated.wav"
+    C_SHARP_5 = "data/sample_sounds_truncated/357385__mtg__trumpet-csharp5-truncated.wav"
+    D_5 = "data/sample_sounds_truncated/357336__mtg__trumpet-d5-truncated.wav"
+    D_SHARP_5 = "data/sample_sounds_truncated/357386__mtg__trumpet-dsharp5-truncated.wav"
+    E_5 = "data/sample_sounds_truncated/357351__mtg__trumpet-e5-truncated.wav"
+    F_5 = "data/sample_sounds_truncated/357546__mtg__trumpet-f5-truncated.wav"
+    F_SHARP_5 = "data/sample_sounds_truncated/357361__mtg__trumpet-fsharp5-truncated.wav"
+    G_5 = "data/sample_sounds_truncated/357364__mtg__trumpet-g5-truncated.wav"
+    G_SHARP_5 = "data/sample_sounds_truncated/357433__mtg__trumpet-gsharp5-truncated.wav"
+    A_5 = "data/sample_sounds_truncated/357328__mtg__trumpet-a5-truncated.wav"
+    A_SHARP_5 = "data/sample_sounds_truncated/357469__mtg__trumpet-asharp5-truncated.wav"
+    # B_5 = ""
 
-# # Read data
-# data = f.readframes(chunk)
+# Playing sound using PyAudio
+def playAudio(path):
 
-# # Play stream
-# while data:
-#     stream.write(data)
-#     data = f.readframes(chunk)
+    mixer.music.load(path)
+    mixer.music.set_volume(1)
+    mixer.music.play(loops=-1, start=0)
 
-# # Stop stream
-# stream.stop_stream()
-# stream.close()
+def playNote(note):
 
-# # Close pyAudio
-# p.terminate()
+    match note:
+        case "C4":
+            playAudio(TrumpetNoteSample.C_4)
+        case "C#4":
+            playAudio(TrumpetNoteSample.C_SHARP_4)
+        case "D4":
+            playAudio(TrumpetNoteSample.D_4)
+        case "D#4":
+            playAudio(TrumpetNoteSample.D_SHARP_4)
+        case "E4":
+            playAudio(TrumpetNoteSample.E_4)
+        case "F4":
+            playAudio(TrumpetNoteSample.F_4)
+        case "F#4":
+            playAudio(TrumpetNoteSample.F_SHARP_4)
+        case "G4":
+            playAudio(TrumpetNoteSample.G_4)
+        case "G#4":
+            playAudio(TrumpetNoteSample.G_SHARP_4)
+        case "A4":
+            playAudio(TrumpetNoteSample.A_4)
+        case "A#4":
+            playAudio(TrumpetNoteSample.A_SHARP_4)
+        case "B4":
+            playAudio(TrumpetNoteSample.B_4)
+        case "C5":
+            playAudio(TrumpetNoteSample.C_5)
+        case "C#5":
+            playAudio(TrumpetNoteSample.C_SHARP_5)
+        case "D5":
+            playAudio(TrumpetNoteSample.D_5)
+        case "D#5":
+            playAudio(TrumpetNoteSample.D_SHARP_5)
+        case "E5":
+            playAudio(TrumpetNoteSample.E_5)
+        case "F5":
+            playAudio(TrumpetNoteSample.F_5)
+        case "F#5":
+            playAudio(TrumpetNoteSample.F_SHARP_5)
+        case "G5":
+            playAudio(TrumpetNoteSample.G_5)
+        case "G#5":
+            playAudio(TrumpetNoteSample.G_SHARP_5)
+        case "A5":
+            playAudio(TrumpetNoteSample.A_5)
+        case "A#5":
+            playAudio(TrumpetNoteSample.A_SHARP_5)
+        case "None":
+            mixer.music.stop()
 
 # FACIAL RECOGNITION
 mp_face = face_mesh
@@ -289,96 +351,109 @@ def valvesClassification(
 # G#5: MiddleFront + Forced
 # A5: BackMiddle + Forced
 # A#5: Back + Forced
-# B5: Middle + Forced
+# B5: Middle + Forced # SOUND UNAVAILABLE
 
 def notesClassification(valve_state, lip_state):
     
     if lip_state == "Closed":
         
-        if valve_state == "None":
-            return "C4 - Do"
-        
-        elif valve_state == "BackMiddleFront":
-            return "C#4 - Do#"
-        
-        elif valve_state == "BackFront":
-            return "D4 - Re"
-        
-        elif valve_state == "MiddleFront":
-            return "D#4 - Re#"
-        
-        elif valve_state == "BackMiddle":
-            return "E4 - Mi"
-        
-        elif valve_state == "Back":
-            return "F4 - Fa"
-        
-        elif valve_state == "Middle":
-            return "F#4 - Fa#"
+        match valve_state:
+
+            case "None":
+                return "C4"
+            
+            case "BackMiddleFront":
+                return "C#4"
+            
+            case "BackFront":
+                return "D4"
+            
+            case "MiddleFront":
+                return "D#4"
+            
+            case "BackMiddle":
+                return "E4"
+            
+            case "Back":
+                return "F4"
+            
+            case "Middle":
+                return "F#4"
     
     elif lip_state == "Strained":
 
-        if valve_state == "None":
-            return "G4 - Son"
-    
-        elif valve_state == "MiddleFront":
-            return "G#4 - Son#"
-    
-        elif valve_state == "BackMiddle":
-            return "A4 - La"
-    
-        elif valve_state == "Back":
-            return "A#4 - La#"
-    
-        elif valve_state == "Middle":
-            return "B4 - Si"
+        match valve_state:
+
+            case "None":
+                return "G4"
+        
+            case "MiddleFront":
+                return "G#4"
+        
+            case "BackMiddle":
+                return "A4"
+        
+            case "Back":
+                return "A#4"
+        
+            case "Middle":
+                return "B4"
     
     elif lip_state == "Pursed":
+        
+        match valve_state:
 
-        if valve_state == "None":
-            return "C5 - Do"
-        
-        elif valve_state == "BackMiddle":
-            return "C#5 - Do#"
-        
-        elif valve_state == "BackFront":
-            return "D5 - Re"
-        
-        elif valve_state == "MiddleFront":
-            return "D#5 - Re#"
-        
-        elif valve_state == "Front":
-            return "E5 - Mi"
-        
-        elif valve_state == "Back":
-            return "F5 - Fa"
-        
-        elif valve_state == "Middle":
-            return "F#5 - Fa#"
+            case "None":
+                return "C5"
+            
+            case "BackMiddle":
+                return "C#5"
+            
+            case "BackFront":
+                return "D5"
+            
+            case "MiddleFront":
+                return "D#5"
+            
+            case "Front":
+                return "E5"
+            
+            case "Back":
+                return "F5"
+            
+            case "Middle":
+                return "F#5"
 
     elif lip_state == "Forced":
 
-        if valve_state == "None":
-            return "G5 - Son"
-    
-        elif valve_state == "MiddleFront":
-            return "G#5 - Son#"
-    
-        elif valve_state == "BackMiddle":
-            return "A5 - La"
-    
-        elif valve_state == "Back":
-            return "A#5 - La#"
-    
-        elif valve_state == "Middle":
-            return "B5 - Si"
+        match valve_state:
+
+            case "None":
+                return "G5"
+        
+            case "MiddleFront":
+                return "G#5"
+        
+            case "BackMiddle":
+                return "A5"
+        
+            case "Back":
+                return "A#5"
+        
+            # case "Middle":
+            #     return "B5"
     
     else:
-        return "Nothing is playing"
+        return "None"
+
+notes_output = "Not Detected"
+notes_output_prev = notes_output
 
 while True:
     # Capture frame-by-frame
     ret, frame = cap.read()
+
+    mixer.init()
  
     # if frame is read correctly ret is True
     if not ret:
@@ -477,7 +552,18 @@ while True:
 
     if results_hands.multi_hand_landmarks and results_face.multi_face_landmarks:
 
+        # Detect change in
+
         notes_output = notesClassification(valve_state, lip_state)
+
+        print("notes_output: ", notes_output)
+        print("notes_output_prev: ",notes_output_prev)
+
+        if notes_output_prev != notes_output:
+            print("Note changed")
+            playNote(notes_output)
+
+        notes_output_prev = notes_output
 
         cv.putText(
             image_rgb, # image to draw text on
@@ -488,6 +574,9 @@ while True:
             (255, 0, 0), # color
             2, # line thickness
         )
+    
+    else:
+        mixer.music.stop()
 
     # Convert the RGB image back to BGR
     image = cv.cvtColor(image_rgb, cv.COLOR_RGB2BGR)
