@@ -13,6 +13,9 @@ from mediapipe.python.solutions.face_mesh_connections import FACEMESH_LIPS
 from mediapipe.python.solutions.hands import HandLandmark
 from mediapipe.python.solutions.drawing_utils import DrawingSpec
 
+# Distance from face to webcam is 40cm
+STANDARD_DISTANCE = 40
+
 # Enumerate all possible Trumpet Notes
 # And the corresponding audio files in the data folder
 class TrumpetNoteSample(enum.StrEnum):
@@ -106,7 +109,7 @@ def playNote(note):
 
 # FACIAL RECOGNITION
 mp_face = face_mesh
-face = mp_face.FaceMesh()
+face = mp_face.FaceMesh(refine_landmarks=True)
 
 # HAND GESTURE RECOGNITION
 mp_hands = hands
@@ -197,8 +200,14 @@ def airflowClassification(
     lip_center_inner_lower_y,
 
     lip_left_x,
-    lip_right_x
+    lip_right_x,
+
+    dist_to_screen
 ):
+    
+    scaling_factor = STANDARD_DISTANCE / dist_to_screen
+
+    print("scaling_factor:", scaling_factor)
     
     y_diff_outer_center_lip = abs(lip_center_outer_upper_y - lip_center_outer_lower_y)
 
@@ -220,7 +229,7 @@ def airflowClassification(
     lip_is_closed = math.ceil(lip_center_inner_upper_y * 100) >= math.floor(lip_center_inner_lower_y * 100)
 
     if not lip_is_closed:
-        if x_diff_edge_lip <= 0.08:
+        if x_diff_edge_lip <= 0.08 * scaling_factor:
             return "Pursed"
 
     # Closed lips
@@ -228,10 +237,10 @@ def airflowClassification(
 
         # Pursed lips, more air
         # 0.05 for mac
-        if x_diff_edge_lip <= 0.08:
+        if x_diff_edge_lip <= 0.08 * scaling_factor:
             return "Forced"
         
-        elif y_diff_outer_center_lip <= 0.05:
+        elif y_diff_outer_center_lip <= 0.05 * scaling_factor:
             return "Strained"
         
         else:
@@ -449,6 +458,19 @@ def notesClassification(valve_state, lip_state):
 notes_output = "Not Detected"
 notes_output_prev = notes_output
 
+def distFaceToScreen(
+    left_iris_x,
+    left_iris_y,
+    right_iris_x,
+    right_iris_y
+):
+
+    left_iris = [left_iris_x, left_iris_y]
+    right_iris = [right_iris_x, right_iris_y]
+
+    return 5 / math.dist(left_iris, right_iris)
+
+
 while True:
     # Capture frame-by-frame
     ret, frame = cap.read()
@@ -516,6 +538,15 @@ while True:
 
         for face_landmark in results_face.multi_face_landmarks:
 
+            dist_face_to_screen = distFaceToScreen(
+                left_iris_x=face_landmark.landmark[473].x,
+                left_iris_y=face_landmark.landmark[473].y,
+                right_iris_x=face_landmark.landmark[468].x,
+                right_iris_y=face_landmark.landmark[468].y
+            )
+
+            print("dist_face_to_screen:", dist_face_to_screen)
+
             lip_state = airflowClassification(
 
                 # Outer boundary of lips
@@ -528,7 +559,9 @@ while True:
 
                 # Commmissures
                 lip_left_x=face_landmark.landmark[291].x,
-                lip_right_x=face_landmark.landmark[61].x
+                lip_right_x=face_landmark.landmark[61].x,
+
+                dist_to_screen=dist_face_to_screen
             )
 
             # Draw Text
@@ -582,7 +615,7 @@ while True:
     image = cv.cvtColor(image_rgb, cv.COLOR_RGB2BGR)
     
     # Display the resulting frame
-    cv.imshow('Hand Landmarks', image)
+    cv.imshow('Air Trumpet v1.0', image)
     if cv.waitKey(1) == ord('q'):
         break
  
