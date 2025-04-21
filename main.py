@@ -1,6 +1,4 @@
 import numpy as np
-import pyaudio
-import wave
 import enum
 from time import sleep
 from pygame import mixer
@@ -13,16 +11,27 @@ from mediapipe.python.solutions.face_mesh_connections import FACEMESH_LIPS
 from mediapipe.python.solutions.hands import HandLandmark
 from mediapipe.python.solutions.drawing_utils import DrawingSpec
 
-# Distance from face to webcam is 40cm
+# Distance from face to MacBook Pro 16 2023 webcam is 40cm
 STANDARD_DISTANCE = 40
+SCREEN_TO_IRL_CONST = 5
+PURSED_LIPS_THRESHOLD_X = 0.09
+STRAINED_LIPS_THRESHOLD_X = 0.1
+STRAINED_LIPS_THRESHOLD_Y = 0.05
 
 # Enumerate all possible Trumpet Notes
 # And the corresponding audio files in the data folder
 class TrumpetNoteSample(enum.StrEnum):
 
-    """Audio Files of 24 Possible Trumpet Notes"""
+    """Audio Files of 31 Possible Trumpet Notes"""
 
+    F_SHARP_3 = "data/sample_sounds_truncated/357378__mtg__trumpet-fsharp3-truncated.wav"
+    G_3 = "data/sample_sounds_truncated/357568__mtg__trumpet-g3-truncated.wav"
+    G_SHARP_3 = "data/sample_sounds_truncated/357566__mtg__trumpet-gsharp3-truncated.wav"
+    A_3 = "data/sample_sounds_truncated/357380__mtg__trumpet-a3-truncated.wav"
+    A_SHARP_3 = "data/sample_sounds_truncated/357589__mtg__trumpet-asharp3-truncated.wav"
+    B_3 = "data/sample_sounds_truncated/357381__mtg__trumpet-b3-truncated.wav"
     C_4 = "data/sample_sounds_truncated/357382__mtg__trumpet-c4-truncated.wav"
+
     C_SHARP_4 = "data/sample_sounds_truncated/357478__mtg__trumpet-csharp4-truncated.wav"
     D_4 = "data/sample_sounds_truncated/357542__mtg__trumpet-d4-truncated.wav"
     D_SHARP_4 = "data/sample_sounds_truncated/357388__mtg__trumpet-dsharp4-truncated.wav"
@@ -30,12 +39,13 @@ class TrumpetNoteSample(enum.StrEnum):
     F_4 = "data/sample_sounds_truncated/357384__mtg__trumpet-f4-truncated.wav"
     F_SHARP_4 = "data/sample_sounds_truncated/357323__mtg__trumpet-fsharp4-truncated.wav"
     G_4 = "data/sample_sounds_truncated/357360__mtg__trumpet-g4-truncated.wav"
+
     G_SHARP_4 = "data/sample_sounds_truncated/357363__mtg__trumpet-gsharp4-truncated.wav"
     A_4 = "data/sample_sounds_truncated/357370__mtg__trumpet-a4-truncated.wav"
     A_SHARP_4 = "data/sample_sounds_truncated/357457__mtg__trumpet-asharp4-truncated.wav"
     B_4 = "data/sample_sounds_truncated/247067__mtg__overall-quality-of-single-note-trumpet-b4-truncated.wav"
-
     C_5 = "data/sample_sounds_truncated/357432__mtg__trumpet-c5-truncated.wav"
+
     C_SHARP_5 = "data/sample_sounds_truncated/357385__mtg__trumpet-csharp5-truncated.wav"
     D_5 = "data/sample_sounds_truncated/357336__mtg__trumpet-d5-truncated.wav"
     D_SHARP_5 = "data/sample_sounds_truncated/357386__mtg__trumpet-dsharp5-truncated.wav"
@@ -43,10 +53,12 @@ class TrumpetNoteSample(enum.StrEnum):
     F_5 = "data/sample_sounds_truncated/357546__mtg__trumpet-f5-truncated.wav"
     F_SHARP_5 = "data/sample_sounds_truncated/357361__mtg__trumpet-fsharp5-truncated.wav"
     G_5 = "data/sample_sounds_truncated/357364__mtg__trumpet-g5-truncated.wav"
+    
     G_SHARP_5 = "data/sample_sounds_truncated/357433__mtg__trumpet-gsharp5-truncated.wav"
     A_5 = "data/sample_sounds_truncated/357328__mtg__trumpet-a5-truncated.wav"
     A_SHARP_5 = "data/sample_sounds_truncated/357469__mtg__trumpet-asharp5-truncated.wav"
     # B_5 = ""
+    # C_6 = ""
 
 # Playing sound using PyAudio
 def playAudio(path):
@@ -58,6 +70,18 @@ def playAudio(path):
 def playNote(note):
 
     match note:
+        case "F#3":
+            playAudio(TrumpetNoteSample.F_SHARP_3)
+        case "G3":
+            playAudio(TrumpetNoteSample.G_3)
+        case "G#3":
+            playAudio(TrumpetNoteSample.G_SHARP_3)
+        case "A3":
+            playAudio(TrumpetNoteSample.A_3)
+        case "A#3":
+            playAudio(TrumpetNoteSample.A_SHARP_3)
+        case "B3":
+            playAudio(TrumpetNoteSample.B_3)
         case "C4":
             playAudio(TrumpetNoteSample.C_4)
         case "C#4":
@@ -104,6 +128,10 @@ def playNote(note):
             playAudio(TrumpetNoteSample.A_5)
         case "A#5":
             playAudio(TrumpetNoteSample.A_SHARP_5)
+        # case "B5":
+        #     playAudio(TrumpetNoteSample.B_5)
+        # case "C6":
+        #     playAudio(TrumpetNoteSample.C_6)
         case "None":
             mixer.music.stop()
 
@@ -199,8 +227,8 @@ def airflowClassification(
     lip_center_inner_upper_y,
     lip_center_inner_lower_y,
 
-    lip_left_x,
-    lip_right_x,
+    lip_edge_left_x,
+    lip_edge_right_x,
 
     dist_to_screen
 ):
@@ -211,7 +239,7 @@ def airflowClassification(
     
     y_diff_outer_center_lip = abs(lip_center_outer_upper_y - lip_center_outer_lower_y)
 
-    x_diff_edge_lip = abs(lip_left_x - lip_right_x)
+    x_diff_edge_lip = abs(lip_edge_left_x - lip_edge_right_x)
 
     # print("lip_center_outer_upper_y: ", lip_center_outer_upper_y)
     # print("lip_center_outer_lower_y: ", lip_center_outer_lower_y)
@@ -220,8 +248,8 @@ def airflowClassification(
 
     print()
 
-    print("lip_left_x: ", lip_left_x)
-    print("lip_right_x: ", lip_right_x)
+    print("lip_left_x: ", lip_edge_left_x)
+    print("lip_right_x: ", lip_edge_right_x)
 
     print("x_diff: ", x_diff_edge_lip)
     print("y_diff_outer_center_lip: ", y_diff_outer_center_lip)
@@ -229,7 +257,7 @@ def airflowClassification(
     lip_is_closed = math.ceil(lip_center_inner_upper_y * 100) >= math.floor(lip_center_inner_lower_y * 100)
 
     if not lip_is_closed:
-        if x_diff_edge_lip <= 0.08 * scaling_factor:
+        if x_diff_edge_lip <= PURSED_LIPS_THRESHOLD_X * scaling_factor:
             return "Pursed"
 
     # Closed lips
@@ -237,11 +265,16 @@ def airflowClassification(
 
         # Pursed lips, more air
         # 0.05 for mac
-        if x_diff_edge_lip <= 0.08 * scaling_factor:
+        if x_diff_edge_lip <= PURSED_LIPS_THRESHOLD_X * scaling_factor:
             return "Forced"
         
-        elif y_diff_outer_center_lip <= 0.05 * scaling_factor:
-            return "Strained"
+        elif y_diff_outer_center_lip <= STRAINED_LIPS_THRESHOLD_Y * scaling_factor and x_diff_edge_lip > PURSED_LIPS_THRESHOLD_X * scaling_factor:
+
+            if x_diff_edge_lip >= STRAINED_LIPS_THRESHOLD_X * scaling_factor:
+                return "Strained"
+            
+            elif x_diff_edge_lip < STRAINED_LIPS_THRESHOLD_X * scaling_factor:
+                return "Tensed"
         
         else:
             return "Closed"
@@ -330,6 +363,7 @@ def valvesClassification(
 # "#" means sharp
 
 # Closed
+# Tensed
 # Strained
 # Pursed
 # Forced
@@ -367,10 +401,35 @@ def notesClassification(valve_state, lip_state):
     if lip_state == "Closed":
         
         match valve_state:
-
+            
+            case "BackMiddleFront":
+                return "F#3"
+            
+            case "BackFront":
+                return "G3"
+            
+            case "MiddleFront":
+                return "G#3"
+            
+            case "BackMiddle":
+                return "A3"
+            
+            case "Front":
+                return "A3"
+            
+            case "Back":
+                return "A#3"
+            
+            case "Middle":
+                return "B3"
+            
             case "None":
                 return "C4"
-            
+    
+    elif lip_state == "Tensed":
+
+        match valve_state:
+
             case "BackMiddleFront":
                 return "C#4"
             
@@ -383,23 +442,29 @@ def notesClassification(valve_state, lip_state):
             case "BackMiddle":
                 return "E4"
             
+            case "Front":
+                return "E4"
+            
             case "Back":
                 return "F4"
             
             case "Middle":
                 return "F#4"
-    
-    elif lip_state == "Strained":
-
-        match valve_state:
 
             case "None":
                 return "G4"
+
+    elif lip_state == "Strained":
+
+        match valve_state:
         
             case "MiddleFront":
                 return "G#4"
         
             case "BackMiddle":
+                return "A4"
+            
+            case "Front":
                 return "A4"
         
             case "Back":
@@ -407,13 +472,13 @@ def notesClassification(valve_state, lip_state):
         
             case "Middle":
                 return "B4"
+            
+            case "None":
+                return "C5"
     
     elif lip_state == "Pursed":
         
         match valve_state:
-
-            case "None":
-                return "C5"
             
             case "BackMiddle":
                 return "C#5"
@@ -432,25 +497,31 @@ def notesClassification(valve_state, lip_state):
             
             case "Middle":
                 return "F#5"
+            
+            case "None":
+                return "G5"
 
     elif lip_state == "Forced":
 
         match valve_state:
-
-            case "None":
-                return "G5"
         
             case "MiddleFront":
                 return "G#5"
         
             case "BackMiddle":
                 return "A5"
+            
+            case "Front":
+                return "A5"
         
             case "Back":
                 return "A#5"
-        
-            # case "Middle":
-            #     return "B5"
+            
+            case "Middle":
+                return "B5"
+            
+            case "None":
+                return "C6"
     
     else:
         return "None"
@@ -468,7 +539,7 @@ def distFaceToScreen(
     left_iris = [left_iris_x, left_iris_y]
     right_iris = [right_iris_x, right_iris_y]
 
-    return 5 / math.dist(left_iris, right_iris)
+    return SCREEN_TO_IRL_CONST / math.dist(left_iris, right_iris)
 
 
 while True:
@@ -558,8 +629,8 @@ while True:
                 lip_center_inner_lower_y=face_landmark.landmark[14].y,
 
                 # Commmissures
-                lip_left_x=face_landmark.landmark[291].x,
-                lip_right_x=face_landmark.landmark[61].x,
+                lip_edge_left_x=face_landmark.landmark[291].x,
+                lip_edge_right_x=face_landmark.landmark[61].x,
 
                 dist_to_screen=dist_face_to_screen
             )
@@ -585,7 +656,7 @@ while True:
 
     if results_hands.multi_hand_landmarks and results_face.multi_face_landmarks:
 
-        # Detect change in
+        # Detect change in tone
 
         notes_output = notesClassification(valve_state, lip_state)
 
