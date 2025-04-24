@@ -10,13 +10,22 @@ from mediapipe.python.solutions import face_mesh
 from mediapipe.python.solutions.face_mesh_connections import FACEMESH_LIPS
 from mediapipe.python.solutions.hands import HandLandmark
 from mediapipe.python.solutions.drawing_utils import DrawingSpec
+from datetime import datetime
 
 # Distance from face to MacBook Pro 16 2023 webcam is 40cm
 STANDARD_DISTANCE = 40
 SCREEN_TO_IRL_CONST = 5
-PURSED_LIPS_THRESHOLD_X = 0.09
+PURSED_LIPS_THRESHOLD_X = 0.08
 STRAINED_LIPS_THRESHOLD_X = 0.1
 STRAINED_LIPS_THRESHOLD_Y = 0.05
+
+# TEST MODULES
+notes_num_detected = 0
+notes_tried_before_current = 0
+notes_required = ["F#3", "C4", "C#4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "E5", "A#5"]
+notes_required_matched = []
+notes_required_remaining = ["F#3", "C4", "C#4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "E5", "A#5"]
+notes_required_tries = []
 
 # Enumerate all possible Trumpet Notes
 # And the corresponding audio files in the data folder
@@ -254,6 +263,7 @@ def airflowClassification(
     print("x_diff: ", x_diff_edge_lip)
     print("y_diff_outer_center_lip: ", y_diff_outer_center_lip)
 
+    
     lip_is_closed = math.ceil(lip_center_inner_upper_y * 100) >= math.floor(lip_center_inner_lower_y * 100)
 
     if not lip_is_closed:
@@ -368,33 +378,41 @@ def valvesClassification(
 # Pursed
 # Forced
 
+# F#3: All + Closed
+# G3: BackFront + Closed
+# G#3: MiddleFront + Closed
+# A3: BackMiddle + Closed
+# A#3: Back + Closed
+# B3: Middle + Closed
 # C4: None + Closed
-# C#4: All + Closed
-# D4: BackFront + Closed
-# D#4: MiddleFront + Closed
-# E4: BackMiddle + Closed
-# F4: Back + Closed
-# F#4: Middle + Closed
 
-# G4: None + Strained
+# C#4: All + Tensed
+# D4: BackFront + Tensed
+# D#4: MiddleFront + Tensed
+# E4: BackMiddle + Tensed
+# F4: Back + Tensed
+# F#4: Middle + Tensed
+# G4: None + Tensed
+
 # G#4: MiddleFront + Strained
 # A4: BackMiddle + Strained
 # A#4: Back + Strained
 # B4: Middle + Strained
+# C5: None + Strained
 
-# C5: None + Pursed
 # C#5: BackMiddle + Pursed
 # D5: BackFront + Pursed
 # D#5: MiddleFront + Pursed
 # E5: Front + Pursed
 # F5: Back + Pursed
 # F#5: Middle + Pursed
+# G5: None + Pursed
 
-# G5: None + Forced
 # G#5: MiddleFront + Forced
 # A5: BackMiddle + Forced
 # A#5: Back + Forced
 # B5: Middle + Forced # SOUND UNAVAILABLE
+# C6: None + Forced # SOUND UNAVAILABLE
 
 def notesClassification(valve_state, lip_state):
     
@@ -541,6 +559,7 @@ def distFaceToScreen(
 
     return SCREEN_TO_IRL_CONST / math.dist(left_iris, right_iris)
 
+start_datetime = datetime.now()
 
 while True:
     # Capture frame-by-frame
@@ -550,7 +569,7 @@ while True:
  
     # if frame is read correctly ret is True
     if not ret:
-        print("Can't receive frame (stream end?). Exiting ...")
+        print("Frame cannot be read. Exiting ...")
         break
 
     # Our operations on the frame come here
@@ -590,7 +609,7 @@ while True:
             cv.putText(
                 image_rgb, # image on which to draw text
                 valve_state, 
-                (200, 400), # bottom left corner of text
+                (200, 600), # bottom left corner of text
                 cv.FONT_HERSHEY_SIMPLEX, # font to use
                 1, # font scale
                 (255, 0, 0), # color
@@ -616,7 +635,7 @@ while True:
                 right_iris_y=face_landmark.landmark[468].y
             )
 
-            print("dist_face_to_screen:", dist_face_to_screen)
+            # print("dist_face_to_screen:", dist_face_to_screen)
 
             lip_state = airflowClassification(
 
@@ -639,7 +658,7 @@ while True:
             cv.putText(
                 image_rgb, # image to draw text on
                 lip_state, 
-                (200, 450), # bottom left corner of text
+                (200, 650), # bottom left corner of text
                 cv.FONT_HERSHEY_SIMPLEX, # font to use
                 1, # font scale
                 (255, 0, 0), # color
@@ -667,12 +686,25 @@ while True:
             print("Note changed")
             playNote(notes_output)
 
+            if notes_output != "None":
+                print("Add a note")
+
+                notes_num_detected = notes_num_detected + 1;
+                notes_tried_before_current = notes_tried_before_current + 1;
+
+                if len(notes_required_remaining) > 0 and notes_output == notes_required_remaining[0]:
+                    notes_required_matched.append(notes_output)
+                    notes_required_tries.append(notes_tried_before_current)
+                    notes_tried_before_current = 0
+                    notes_required_remaining.pop(0)
+
+    
         notes_output_prev = notes_output
 
         cv.putText(
             image_rgb, # image to draw text on
             notes_output, 
-            (200, 500), # bottom left corner of text
+            (200, 700), # bottom left corner of text
             cv.FONT_HERSHEY_SIMPLEX, # font to use
             1, # font scale
             (255, 0, 0), # color
@@ -681,15 +713,64 @@ while True:
     
     else:
         mixer.music.stop()
+    
+    cv.putText(
+        image_rgb, # image to draw text on
+        "Required notes: " + str(notes_required), 
+        (200, 750), # bottom left corner of text
+        cv.FONT_HERSHEY_SIMPLEX, # font to use
+        1, # font scale
+        (255, 0, 0), # color
+        2, # line thickness
+    )
+
+    cv.putText(
+        image_rgb, # image to draw text on
+        "Matched notes: " + str(notes_required_matched), 
+        (200, 800), # bottom left corner of text
+        cv.FONT_HERSHEY_SIMPLEX, # font to use
+        1, # font scale
+        (255, 0, 0), # color
+        2, # line thickness
+    )
+
+    cv.putText(
+        image_rgb, # image to draw text on
+        "Remaining notes: " + str(notes_required_remaining), 
+        (200, 850), # bottom left corner of text
+        cv.FONT_HERSHEY_SIMPLEX, # font to use
+        1, # font scale
+        (255, 0, 0), # color
+        2, # line thickness
+    )
 
     # Convert the RGB image back to BGR
     image = cv.cvtColor(image_rgb, cv.COLOR_RGB2BGR)
     
     # Display the resulting frame
     cv.imshow('Air Trumpet v1.0', image)
+
     if cv.waitKey(1) == ord('q'):
         break
- 
+
 # When everything is done, release the capture
 cap.release()
 cv.destroyAllWindows()
+
+print()
+
+print("Start date and time:", start_datetime)
+
+end_datetime = datetime.now()
+print("Completion date and time:", end_datetime)
+
+print()
+print("Number of notes detected:", notes_num_detected)
+
+if notes_num_detected > 0:
+    accuracy = len(notes_required_matched) / notes_num_detected
+    print("Accuracy:", round(accuracy, 2))
+
+print(notes_required_remaining)
+print("Matched notes:", notes_required_matched)
+print("Number of tries for each note:", notes_required_tries)
