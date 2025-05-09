@@ -3,6 +3,8 @@ An implementation of gesture control on trumpets using Python and OpenCV. In ful
 
 Supervised by Dr. Scott Valcourt at the Roux Institute at Northeastern University, with Dr. Lama Hamandi and Dr. Akram Bayat at the Northeastern University Silicon Valley/San Jose campus as thesis readers.
 
+Master's Thesis (ProQuest log-in required): https://onesearch.library.northeastern.edu/permalink/01NEU_INST/87npqb/cdi_proquest_journals_3197308119
+
 ## Features
 Air Trumpet allows for playing up to 31 standard tones F#3-C6. Sounds sourced from the Music Technology Group (MTG) of the Universitat Pompeu Fabra in Barcelona: https://freesound.org/people/MTG/packs/20232/
 
