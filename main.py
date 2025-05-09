@@ -1,25 +1,27 @@
-import numpy as np
+# Created by Triet Ngo for CS 7990: Master's Thesis
+# at Northeastern University. Last updated: May 8th, 2025.
+
+# IMPORT NECESSARY PACKAGES AND LIBRARIES
 import enum
-from time import sleep
 from pygame import mixer
 import cv2 as cv
 import mediapipe as mp
 import math
 from mediapipe.python.solutions import hands, drawing_styles
 from mediapipe.python.solutions import face_mesh
-from mediapipe.python.solutions.face_mesh_connections import FACEMESH_LIPS
 from mediapipe.python.solutions.hands import HandLandmark
 from mediapipe.python.solutions.drawing_utils import DrawingSpec
 from datetime import datetime
 
-# Distance from face to MacBook Pro 16 2023 webcam is 40cm
-STANDARD_DISTANCE = 40
-SCREEN_TO_IRL_CONST = 5
+# GLOBAL THRESHOLDS FOR LIP LANDMARK DETECTIONS
+
+STANDARD_DISTANCE = 40 # Distance from face to MacBook Pro 16 2023 webcam is 40cm
+SCREEN_TO_IRL_CONST = 5 
 PURSED_LIPS_THRESHOLD_X = 0.08
 STRAINED_LIPS_THRESHOLD_X = 0.1
 STRAINED_LIPS_THRESHOLD_Y = 0.05
 
-# TEST MODULES
+# TEST MODULE FOR IN-PERSON STUDY
 notes_num_detected = 0
 notes_tried_before_current = 0
 notes_required = ["F#3", "C4", "C#4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "E5", "A#5"]
@@ -27,11 +29,11 @@ notes_required_matched = []
 notes_required_remaining = ["F#3", "C4", "C#4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "E5", "A#5"]
 notes_required_tries = []
 
-# Enumerate all possible Trumpet Notes
-# And the corresponding audio files in the data folder
 class TrumpetNoteSample(enum.StrEnum):
 
-    """Audio Files of 31 Possible Trumpet Notes"""
+    """Enumerate sound sample path of 31 possible trumpet tones.
+    Audio truncated and processed using Audacity.
+    """
 
     F_SHARP_3 = "data/sample_sounds_truncated/357378__mtg__trumpet-fsharp3-truncated.wav"
     G_3 = "data/sample_sounds_truncated/357568__mtg__trumpet-g3-truncated.wav"
@@ -66,17 +68,32 @@ class TrumpetNoteSample(enum.StrEnum):
     G_SHARP_5 = "data/sample_sounds_truncated/357433__mtg__trumpet-gsharp5-truncated.wav"
     A_5 = "data/sample_sounds_truncated/357328__mtg__trumpet-a5-truncated.wav"
     A_SHARP_5 = "data/sample_sounds_truncated/357469__mtg__trumpet-asharp5-truncated.wav"
+
+    # No quality sound samples for B5 and C6
     # B_5 = ""
     # C_6 = ""
 
-# Playing sound using PyAudio
 def playAudio(path):
+
+    """Play audio using PyAudio.
+    This function loads the sound sample from the TrumpetNoteSample
+    class and play the sample in a loop at volume of 1x system volume.
+
+    Keyword arguments:
+    path -- path to sound sample from TrumpetNoteSample class
+    """
 
     mixer.music.load(path)
     mixer.music.set_volume(1)
     mixer.music.play(loops=-1, start=0)
 
 def playNote(note):
+
+    """Play the correct note using system audio output.
+
+    Keyword arguments:
+    note -- note to be played using playAudio()
+    """
 
     match note:
         case "F#3":
@@ -137,22 +154,28 @@ def playNote(note):
             playAudio(TrumpetNoteSample.A_5)
         case "A#5":
             playAudio(TrumpetNoteSample.A_SHARP_5)
+        
+        # No sound samples for B5 and C6
+
         # case "B5":
         #     playAudio(TrumpetNoteSample.B_5)
         # case "C6":
         #     playAudio(TrumpetNoteSample.C_6)
+
+        # If no notes are detected
+        # stop playing sounds
         case "None":
             mixer.music.stop()
 
 # FACIAL RECOGNITION
 mp_face = face_mesh
-face = mp_face.FaceMesh(refine_landmarks=True)
+face = mp_face.FaceMesh(refine_landmarks=True) # Set refine-landmarks to True to include irises
 
 # HAND GESTURE RECOGNITION
 mp_hands = hands
 hand = mp_hands.Hands()
 
-# Initialize drawing utils for the hand and facial landmarks on image
+# Initialize drawing utils for the hand and facial landmarks on current frame
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_lips = mp.solutions.drawing_utils
 
@@ -164,18 +187,20 @@ custom_connections_hands = list(mp_hands.HAND_CONNECTIONS)
 custom_style_lips = mp_drawing_styles.get_default_face_mesh_tesselation_style()
 custom_connections_lips = list(mp_face.FACEMESH_LIPS)
 
-# Extract all lip landmarks
-lip_landmarks_2d = [list(connection_tuple) for connection_tuple in custom_connections_lips]
+# LIP LANDMARKS ISOLATION (NOT WORKING)
 
-# Flatten the lip landmarks
-lip_landmarks = [
-    lip_landmark
-    for pair in lip_landmarks_2d
-    for lip_landmark in pair
-]
+# # Extract all lip landmarks
+# lip_landmarks_2d = [list(connection_tuple) for connection_tuple in custom_connections_lips]
 
-# Remove duplicates
-lip_landmarks = list(set(lip_landmarks))
+# # Flatten the lip landmarks
+# lip_landmarks = [
+#     lip_landmark
+#     for pair in lip_landmarks_2d
+#     for lip_landmark in pair
+# ]
+
+# # Remove duplicates
+# lip_landmarks = list(set(lip_landmarks))
 
 # # Remove non-lip feature drawing
 # for lip_landmark_tuple in custom_connections_lips:
@@ -185,7 +210,7 @@ lip_landmarks = list(set(lip_landmarks))
 # for style in custom_style_lips:
 #     print(style)
 
-# Exclude the wrist, thumbs, and pinky fingers
+# EXCLUDE ALL THUMB, PINKY FINGER AND WRIST LANDMARKS
 excluded_landmarks_hands = [
     HandLandmark.THUMB_CMC,
     HandLandmark.THUMB_IP,
@@ -200,32 +225,38 @@ excluded_landmarks_hands = [
 
 for hand_landmark in excluded_landmarks_hands:
 
-    # we change the way the excluded landmarks are drawn
+    # Change excluded landmarks color to white(0,0,0) with no thickness
     custom_style_hands[hand_landmark] = DrawingSpec(color=(0,0,0), thickness=None)
 
-    # we remove all connections which contain these landmarks
+    # Remove all connections among the excluded landmarks
     custom_connections_hands = [
         connection_tuple
         for connection_tuple in custom_connections_hands 
         if hand_landmark.value not in connection_tuple
     ]
 
-print("Custom style hands: ")
-print(custom_style_hands)
+# PRINT DEBUGGING FOR EXCLUDED LANDMARKS
+
+# print("Custom style hands: ")
+# print(custom_style_hands)
 
 # print("Custom connection hands: ")
 # print(custom_connections_hands)
 
-print("Custom style lips: ")
-print(custom_style_lips)
+# print("Custom style lips: ")
+# print(custom_style_lips)
 
 # print("Custom connection lips after fix: ")
 # print(custom_connections_lips)
 
+# VIDEO CAPTURE INITIALIZATION
 cap = cv.VideoCapture(0)
 if not cap.isOpened():
-    print("Cannot open camera")
+
+    # If camera is not detected, exit the application.
+    print("Cannot open camera.")
     exit()
+
 
 def airflowClassification(
 
@@ -242,10 +273,30 @@ def airflowClassification(
     dist_to_screen
 ):
     
+    """Classify different lip gestures to represent different
+    levels of airflow strength.
+
+    Keyword arguments:
+    lip_center_outer_upper_y -- y-coord of upper outer center lip landmark, numbered 0
+    lip_center_outer_lower_y -- y-coord of lower outer center lip landmark, numbered 17
+
+    lip_center_inner_upper_y -- y-coord of upper inner center lip landmark, numbered 13
+    lip_center_inner_lower_y -- y-coord of lower inner center lip landmark, numbered 14
+
+    lip_edge_left_x -- x-coord of left commissure, numbered 291
+    lip_edge_right_x -- x-coord of right commissure, numbered 61
+
+    dist_to_screen -- standard distance from face to screen, default value is 40
+    """
+    
+    # Scaling factor that keeps certain oral gesture thresholds
+    # consistent regardless of distance from the user's face to
+    # the screen
     scaling_factor = STANDARD_DISTANCE / dist_to_screen
 
-    print("scaling_factor:", scaling_factor)
+    # print("scaling_factor:", scaling_factor)
     
+    # y-axis distance between the outer center lip landmarks #0 and #17
     y_diff_outer_center_lip = abs(lip_center_outer_upper_y - lip_center_outer_lower_y)
 
     x_diff_edge_lip = abs(lip_edge_left_x - lip_edge_right_x)
@@ -253,46 +304,67 @@ def airflowClassification(
     # print("lip_center_outer_upper_y: ", lip_center_outer_upper_y)
     # print("lip_center_outer_lower_y: ", lip_center_outer_lower_y)
     # print()
-    print("diff: ", abs(lip_center_outer_upper_y - lip_center_outer_lower_y))
+    # print("diff: ", abs(lip_center_outer_upper_y - lip_center_outer_lower_y))
 
-    print()
+    # print()
 
-    print("lip_left_x: ", lip_edge_left_x)
-    print("lip_right_x: ", lip_edge_right_x)
+    # print("lip_left_x: ", lip_edge_left_x)
+    # print("lip_right_x: ", lip_edge_right_x)
 
-    print("x_diff: ", x_diff_edge_lip)
-    print("y_diff_outer_center_lip: ", y_diff_outer_center_lip)
+    # print("x_diff: ", x_diff_edge_lip)
+    # print("y_diff_outer_center_lip: ", y_diff_outer_center_lip)
 
-    
+    # Lip is considered closed when the inner center lip landmarks
+    # #13 and #14 meet or overlap on the y-axis
     lip_is_closed = math.ceil(lip_center_inner_upper_y * 100) >= math.floor(lip_center_inner_lower_y * 100)
 
+    # If the lips are not closed
+    # If the x-axis distance between two commissures are less
+    # than the threshold times the scaling factor, register
+    # a "Pursed" gesture
     if not lip_is_closed:
         if x_diff_edge_lip <= PURSED_LIPS_THRESHOLD_X * scaling_factor:
             return "Pursed"
 
-    # Closed lips
+    # If the lips are closed
     if lip_is_closed:
 
         # Pursed lips, more air
-        # 0.05 for mac
+        # If the x-axis distance between two commissures is less
+        # than the threshold times the scaling factor, register
+        # a "Forced" gesture
         if x_diff_edge_lip <= PURSED_LIPS_THRESHOLD_X * scaling_factor:
             return "Forced"
         
+        # If the y-axis distance between the outer center landmarks
+        # is less than the y-axis threshold for strained lips
+        # and if the x-axis distance between two commissures is greater
+        # than the threshold for pursed lips
         elif y_diff_outer_center_lip <= STRAINED_LIPS_THRESHOLD_Y * scaling_factor and x_diff_edge_lip > PURSED_LIPS_THRESHOLD_X * scaling_factor:
 
+            # If the x-axis distance between two commissures is greater
+            # or equal to the strained lips threshold,
+            # register a "Strained" gesture
             if x_diff_edge_lip >= STRAINED_LIPS_THRESHOLD_X * scaling_factor:
                 return "Strained"
             
+            # If the x-axis distance between two commissures is less than
+            # the strained lips threshold, register a "Tensed" gesture
             elif x_diff_edge_lip < STRAINED_LIPS_THRESHOLD_X * scaling_factor:
                 return "Tensed"
         
+        # If the lips are closed, and no other thresholds are satisfied
+        # register a "Closed" gesture
         else:
             return "Closed"
 
+    # If no other criteria are met
+    # register an "Open" gesture
     else:
         return "Open"
 
-def valvesClassification(
+
+def valveClassification(
         
     # Hand Landmarks
     index_pip_y,
@@ -304,10 +376,26 @@ def valvesClassification(
 
 ):
 
-    # Function to check if the front valve is pressed
-    # if the y-coord of the index tip is lower than the y-coord of the index pip
-    # then register a press and return True
+    """Classify different hand gestures to represent a trumpet
+    valve press.
+
+    Keyword arguments:
+    index_pip_y -- y-coord of the index finger's PIP
+    index_tip_y -- y-coord of the index finger tip
+    middle_pip_y -- y-coord of the middle finger's PIP
+    middle_tip_y -- y-coord of the middle finger tip
+    ring_pip_y -- y-coord of the ring finger's PIP
+    ring_tip_y -- y-coord of the ring finger tip
+    """
+
+
     def isBackValvePressed():
+
+        """
+        Function to check if the front valve is pressed
+        if the y-coord of the index tip is lower than the y-coord of the index pip
+        then register a press and return True
+        """
 
         # Use greater than because the coords are inverted
         if index_tip_y >= index_pip_y:
@@ -316,10 +404,14 @@ def valvesClassification(
         else:
             return False
 
-    # Function to check if the middle valve is pressed
-    # if the y-coord of the middle finger tip is lower than the y-coord of the middle finger pip
-    # then register a press and return True
+
     def isMiddleValvePressed():
+
+        """
+        Function to check if the middle valve is pressed
+        if the y-coord of the middle finger tip is lower than the y-coord of the middle finger pip
+        then register a press and return True
+        """
 
         # Use greater than because the coords are inverted
         if middle_tip_y >= middle_pip_y:
@@ -328,10 +420,14 @@ def valvesClassification(
         else:
             return False
 
-    # Function to check if the back valve is pressed
-    # if the y-coord of the ring finger tip is lower than the y-coord of the ring finger pip
-    # then register a press and return True
+    
     def isFrontValvePressed():
+
+        """
+        Function to check if the back valve is pressed
+        if the y-coord of the ring finger tip is lower than the y-coord of the ring finger pip
+        then register a press and return True
+        """
 
         # Use greater than because the coords are inverted
         if ring_tip_y >= ring_pip_y:
@@ -350,71 +446,75 @@ def valvesClassification(
     # print("middle: " + str(middleValvePressed))
     # print("front: " + str(frontValvePressed))
 
+    # Valve state initialized to "None", meaning no valves are pressed
     valve_state = "None"
 
+    # If a valve is pressed, initialize valve_state to empty string ""
     if isBackValvePressed() or isMiddleValvePressed() or isFrontValvePressed():
         valve_state = ""
 
-    # No valve pressed
+    # If back valve is pressed, append "Back" to valve_state
     if isBackValvePressed():
         valve_state += "Back"
     
-    # Back valve pressed only
+    # If middle valve is pressed, append "Middle" to valve_state
     if isMiddleValvePressed():
         valve_state += "Middle"
     
-    # Middle valve pressed only
+    # If front valve is pressed, append "Front" to valve_state
     if isFrontValvePressed():
         valve_state += "Front"
     
+    # Return the valve state
     return valve_state
 
-# Finger pos
-# "#" means sharp
 
-# Closed
-# Tensed
-# Strained
-# Pursed
-# Forced
+def toneClassification(valve_state, lip_state):
 
-# F#3: All + Closed
-# G3: BackFront + Closed
-# G#3: MiddleFront + Closed
-# A3: BackMiddle + Closed
-# A#3: Back + Closed
-# B3: Middle + Closed
-# C4: None + Closed
+    """Return the tone matching detected hand and the oral gestures
 
-# C#4: All + Tensed
-# D4: BackFront + Tensed
-# D#4: MiddleFront + Tensed
-# E4: BackMiddle + Tensed
-# F4: Back + Tensed
-# F#4: Middle + Tensed
-# G4: None + Tensed
+    Playable tones:
 
-# G#4: MiddleFront + Strained
-# A4: BackMiddle + Strained
-# A#4: Back + Strained
-# B4: Middle + Strained
-# C5: None + Strained
+    F#3: All + Closed
+    G3: BackFront + Closed
+    G#3: MiddleFront + Closed
+    A3: BackMiddle + Closed
+    A#3: Back + Closed
+    B3: Middle + Closed
+    C4: None + Closed
 
-# C#5: BackMiddle + Pursed
-# D5: BackFront + Pursed
-# D#5: MiddleFront + Pursed
-# E5: Front + Pursed
-# F5: Back + Pursed
-# F#5: Middle + Pursed
-# G5: None + Pursed
+    C#4: All + Tensed
+    D4: BackFront + Tensed
+    D#4: MiddleFront + Tensed
+    E4: BackMiddle + Tensed
+    F4: Back + Tensed
+    F#4: Middle + Tensed
+    G4: None + Tensed
 
-# G#5: MiddleFront + Forced
-# A5: BackMiddle + Forced
-# A#5: Back + Forced
-# B5: Middle + Forced # SOUND UNAVAILABLE
-# C6: None + Forced # SOUND UNAVAILABLE
+    G#4: MiddleFront + Strained
+    A4: BackMiddle + Strained
+    A#4: Back + Strained
+    B4: Middle + Strained
+    C5: None + Strained
 
-def notesClassification(valve_state, lip_state):
+    C#5: BackMiddle + Pursed
+    D5: BackFront + Pursed
+    D#5: MiddleFront + Pursed
+    E5: Front + Pursed
+    F5: Back + Pursed
+    F#5: Middle + Pursed
+    G5: None + Pursed
+
+    G#5: MiddleFront + Forced
+    A5: BackMiddle + Forced
+    A#5: Back + Forced
+    B5: Middle + Forced # SOUND UNAVAILABLE
+    C6: None + Forced # SOUND UNAVAILABLE
+
+    Keyword arguments:
+    valve_state -- hand gesture with regard to valve presses
+    lip_state -- oral gesture representing airflow strength
+    """
     
     if lip_state == "Closed":
         
@@ -544,8 +644,6 @@ def notesClassification(valve_state, lip_state):
     else:
         return "None"
 
-notes_output = "Not Detected"
-notes_output_prev = notes_output
 
 def distFaceToScreen(
     left_iris_x,
@@ -554,43 +652,74 @@ def distFaceToScreen(
     right_iris_y
 ):
 
+    """Calculates the distance between the user's irises
+    and roughly abstract that value to the distance between
+    the user's face and the screen.
+
+    Keyword arguments:
+    left_iris_x -- Left iris' x-coord
+    left_iris_y -- Left iris' y-coord
+    right_iris_x -- Right iris' x-coord
+    right_iris_y -- Right iris' y-coord
+    """
+
+    # Left and right irises' 2D coordinates
     left_iris = [left_iris_x, left_iris_y]
     right_iris = [right_iris_x, right_iris_y]
 
+    # Calculate the distance from face to screen
     return SCREEN_TO_IRL_CONST / math.dist(left_iris, right_iris)
 
+# Initialize current date and time
+# For in-person study
 start_datetime = datetime.now()
 
+# Initialize tone output
+# and set tone output in the previous frame to be the same as the current frame
+tone_output = "Not Detected"
+tone_output_prev = tone_output
+
+# While a frame is captured
 while True:
+
     # Capture frame-by-frame
     ret, frame = cap.read()
 
+    # Initialize PyGame Mixer for sound output
     mixer.init()
  
-    # if frame is read correctly ret is True
+    # If frame is read correctly, ret is True
+    # if ret is not True, meaning current frame cannot be captured
+    # break and exit the program
     if not ret:
         print("Frame cannot be read. Exiting ...")
         break
 
-    # Our operations on the frame come here
+    # Convert current frame to RGB
     image_rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
 
-    # Making predictions using hands model
-    # To improve performance, optionally mark the image as not writeable to
-    # pass by reference.
+    # Detect gestures using MediaPipe hand and face detection models
+    # Current frame is marked as not writeable to pass by reference
+    # then remarked as writable to improve performance
     image_rgb.flags.writeable = False
     results_hands = hand.process(image_rgb)
     results_face = face.process(image_rgb)
     image_rgb.flags.writeable = True
 
+    # Initialize valve_state and lip_state as "Not Detected"
+    # to detect change later
     valve_state = "Not Detected"
     lip_state = "Not Detected"
 
+    # If hand landmarks are detected
     if results_hands.multi_hand_landmarks:
 
+        # For each landmark in the detected landmarks
         for hand_landmarks in results_hands.multi_hand_landmarks:
 
-            valve_state = valvesClassification(
+            # Classify the current hand gestures into valve states
+            # using relevant landmarks: 6, 8, 10, 12, 14, 16
+            valve_state = valveClassification(
                 
                 # Index finger
                 index_pip_y=hand_landmarks.landmark[6].y,
@@ -605,10 +734,10 @@ while True:
                 ring_tip_y=hand_landmarks.landmark[16].y
             )
 
-            # Draw Text
+            # Draw text on frame
             cv.putText(
                 image_rgb, # image on which to draw text
-                valve_state, 
+                valve_state, # current valve_state string
                 (200, 600), # bottom left corner of text
                 cv.FONT_HERSHEY_SIMPLEX, # font to use
                 1, # font scale
@@ -616,18 +745,23 @@ while True:
                 2, # line thickness
             )
 
+            # Draw landmarks on the detected hands
             mp_drawing.draw_landmarks(
-                image_rgb, 
-                hand_landmarks,
-                custom_connections_hands,
-                custom_style_hands
+                image_rgb, # image on which to draw
+                hand_landmarks, # detected landmarks
+                custom_connections_hands, # custom connections
+                custom_style_hands # custom hands
                 # mp_hands.HAND_CONNECTIONS
             )
     
+    # If face landmarks are detected
     if results_face.multi_face_landmarks:
 
+        # For each landmark in the detected landmarks
         for face_landmark in results_face.multi_face_landmarks:
 
+            # Calculate distance from face to screen
+            # using iris landmarks
             dist_face_to_screen = distFaceToScreen(
                 left_iris_x=face_landmark.landmark[473].x,
                 left_iris_y=face_landmark.landmark[473].y,
@@ -637,6 +771,7 @@ while True:
 
             # print("dist_face_to_screen:", dist_face_to_screen)
 
+            # Classify oral gestures using lip landmarks
             lip_state = airflowClassification(
 
                 # Outer boundary of lips
@@ -654,56 +789,79 @@ while True:
                 dist_to_screen=dist_face_to_screen
             )
 
-            # Draw Text
+            # Draw text
             cv.putText(
-                image_rgb, # image to draw text on
-                lip_state, 
-                (200, 650), # bottom left corner of text
+                image_rgb, # frame to draw text on
+                lip_state, # classified oral gesture
+                (200, 650), # text coordinate
                 cv.FONT_HERSHEY_SIMPLEX, # font to use
                 1, # font scale
                 (255, 0, 0), # color
                 2, # line thickness
             )
 
+            # Draw landmarks
             mp_drawing_lips.draw_landmarks(
-                image_rgb, 
-                face_landmark,
+                image_rgb, # frame to draw text on
+                face_landmark, # default MediaPipe face landmarks
                 # connections=custom_connections_lips,
-                landmark_drawing_spec=custom_style_lips
+                landmark_drawing_spec=custom_style_lips # landmark styling
                 # mp_face.FACEMESH_CONTOURS
             )
 
+    # If both hand and oral gestures are detected
     if results_hands.multi_hand_landmarks and results_face.multi_face_landmarks:
 
         # Detect change in tone
 
-        notes_output = notesClassification(valve_state, lip_state)
+        # Classify current tone output
+        tone_output = toneClassification(valve_state, lip_state)
 
-        print("notes_output: ", notes_output)
-        print("notes_output_prev: ",notes_output_prev)
+        # print("tone_output: ", tone_output)
+        # print("tone_output_prev: ",tone_output_prev)
 
-        if notes_output_prev != notes_output:
+        # If the tone in the previous frame is different
+        # from the tone in the current frame
+        # there is a change in tone, and Air Trumpet
+        # should play a new tone
+        if tone_output_prev != tone_output:
             print("Note changed")
-            playNote(notes_output)
+            playNote(tone_output)
 
-            if notes_output != "None":
-                print("Add a note")
+            # TESTING MODULE
+            # If the tone output is not "None"
+            if tone_output != "None":
+                # print("Add a note")
 
+                # Increase the number of detected tones
+                # Increase the number of tones tried before current tone
                 notes_num_detected = notes_num_detected + 1;
                 notes_tried_before_current = notes_tried_before_current + 1;
 
-                if len(notes_required_remaining) > 0 and notes_output == notes_required_remaining[0]:
-                    notes_required_matched.append(notes_output)
+                # If there are still required notes to be played
+                # and the tone output matches the first tone in the required list
+                if len(notes_required_remaining) > 0 and tone_output == notes_required_remaining[0]:
+                    
+                    # Add the tone to the list of matched tones
+                    notes_required_matched.append(tone_output)
+
+                    # Add the number of tries to the list of number of tries for each required tone
                     notes_required_tries.append(notes_tried_before_current)
+
+                    # Reset the number of tries to 0 to get ready for the next required tone
                     notes_tried_before_current = 0
+
+                    # Remove the first tone in the list of remaining required tones
+                    # which is the tone that was correctly played
                     notes_required_remaining.pop(0)
 
-    
-        notes_output_prev = notes_output
+        # Update the tone in previous frame to current frame
+        tone_output_prev = tone_output
 
+        # Draw text
         cv.putText(
             image_rgb, # image to draw text on
-            notes_output, 
+            tone_output, 
             (200, 700), # bottom left corner of text
             cv.FONT_HERSHEY_SIMPLEX, # font to use
             1, # font scale
@@ -711,9 +869,12 @@ while True:
             2, # line thickness
         )
     
+    # Else if no hand or oral gestures are detected
+    # mixer stops outputting sounds
     else:
         mixer.music.stop()
     
+    # On-screen texts for testing
     cv.putText(
         image_rgb, # image to draw text on
         "Required notes: " + str(notes_required), 
@@ -750,6 +911,7 @@ while True:
     # Display the resulting frame
     cv.imshow('Air Trumpet v1.0', image)
 
+    # If user press q, exit the program
     if cv.waitKey(1) == ord('q'):
         break
 
@@ -757,6 +919,7 @@ while True:
 cap.release()
 cv.destroyAllWindows()
 
+# Debugging screen for in-person testing
 print()
 
 print("Start date and time:", start_datetime)
